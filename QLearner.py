@@ -77,10 +77,10 @@ class QLearner(object):
         self.rar = rar
         self.radr = radr
         self.dyna = dyna
-        self.Q_table = np.zeros((self.num_states, self.num_actions))
+        self.Q_table = np.zeros((num_states, num_actions))
         self.T_table = np.zeros((num_states, num_actions, num_states))
         self.Tcount_table = np.where(self.T_table == 0, 0.000000001, self.T_table)
-        self.R_table = np.zeros((self.num_states, self.num_actions))
+        self.R_table = np.zeros((num_states, num_actions))
 
     def querysetstate(self, s):
         """
@@ -116,7 +116,7 @@ class QLearner(object):
         """
         # Update Q table formula -> (1- alpha)Q[s,a] + alpha*improved estimate
         prevQ_Val = (1 - self.alpha) * self.Q_table[self.s, self.a]
-        improved_futureEstimate = (r + (self.gamma * self.Q_table[s_prime, np.argmax(self.Q_table[s_prime])]))
+        improved_futureEstimate = (r + (self.gamma * self.Q_table[s_prime, np.argmax(self.Q_table[s_prime, :])]))
         self.Q_table[self.s, self.a] = prevQ_Val + self.alpha * improved_futureEstimate
 
         # implement dyna algorithm
@@ -126,13 +126,13 @@ class QLearner(object):
 
             self.Tcount_table[self.s, self.a, s_prime] = self.Tcount_table[self.s, self.a, s_prime] + 1
 
-            # Step 2: Evaluate T from t count table using formula: T[s,a,s'] = Tc[s,a,s'] / sum(T[s,a,i]
+            # Step 2: Evaluate T from t count table using formula: T[s,a,s'] = Tc[s,a,s'] / sum(T[s,a,i] for all states
             for i in range(0, self.num_states):
                 self.T_table[self.s, self.a, s_prime] = self.Tcount_table[self.s, self.a, i] / sum(
                     self.Tcount_table[self.s, self.a])
 
-            # step 3: Update R[s,a]
-            self.R_table[self.s, self.a] = (1 - self.alpha) * self.R[self.s, self.a] + (self.alpha * r)
+            # step 3: Update R[s,a] = (1-alpha)* R[s,a] + alpha * r
+            self.R_table[self.s, self.a] = (1 - self.alpha) * self.R_table[self.s, self.a] + (self.alpha * r)
 
             # Step 4: Hallucinate
             for i in range(0, self.dyna):
@@ -148,13 +148,13 @@ class QLearner(object):
                 prevQ_Val = (1 - self.alpha) * self.Q_table[rand_state, rand_action]
                 improved_futureEstimate = (r + (self.gamma * self.Q_table[s_prime, np.argmax(self.Q_table[s_prime])]))
 
-                self.Q_table[rand_state, rand_action] = prevQ_Val + improved_futureEstimate
+                self.Q_table[rand_state, rand_action] = prevQ_Val + self.alpha * improved_futureEstimate
 
         # determine action
         if rand.random() < self.rar:
             action = rand.randint(0, self.num_actions - 1)
         else:
-            action = np.argmax(self.Q_table[self.s, :])
+            action = np.argmax(self.Q_table[s_prime, :])
 
         self.rar = self.rar * self.radr
         self.s = s_prime
